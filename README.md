@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/badge/pypi-v0.1.0-blue.svg)](https://pypi.org/project/swarmgit/)
-[![GitHub Stars](https://img.shields.io/github/stars/your-username/swarmgit?style=social)](https://github.com/your-username/swarmgit)
+[![GitHub Stars](https://img.shields.io/github/stars/rjben/swarm-git?style=social)](https://github.com/rjben/swarm-git)
 
 **SwarmGit** is an open-source multi-agent orchestration CLI that solves the biggest pain point in AI-assisted software development: **AI coding agents can't work in parallel on the same codebase without overwriting each other.**
 
@@ -16,12 +16,12 @@ By leveraging native `git worktree`, SwarmGit gives every agent its own isolated
 ## Table of Contents
 
 - [What is SwarmGit?](#what-is-swarmgit)
-- [Why You Need SwarmGit](#why-you-need-swarmgit)
+- [The Problem (With a Real Example)](#the-problem-with-a-real-example)
 - [Supported AI Coding Agents](#supported-ai-coding-agents)
 - [How It Works](#how-it-works)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
-- [CLI Reference](#cli-reference)
+- [Real-World Walkthrough](#real-world-walkthrough)
+- [CLI Reference with Examples](#cli-reference-with-examples)
 - [Configuration](#configuration)
 - [Architecture](#architecture)
 - [Agent Adapters](#agent-adapters)
@@ -50,26 +50,45 @@ SwarmGit is a **Git worktree orchestrator** designed specifically for the era of
 
 ---
 
-## Why You Need SwarmGit
+## The Problem (With a Real Example)
 
-If you've ever tried running two AI coding agents on the same repository, you've experienced this:
+### Before SwarmGit — The Overwrite Nightmare
 
-1. Agent A modifies `app.py`
-2. Agent B modifies `app.py` at the same time
-3. Agent B overwrites Agent A's changes
-4. You lose hours of work
+Imagine you want to build a REST API with authentication and tests. You have Claude Code and Aider installed. Here's what happens without SwarmGit:
 
-SwarmGit eliminates this problem entirely by using **Git worktrees** — a native Git feature that creates multiple working directories backed by a single repository. Each agent sees its own filesystem, commits to its own branch, and never interferes with others.
+```bash
+# Terminal 1 — You ask Claude to build the API
+$ claude "Build a FastAPI REST API with JWT auth"
+# Claude starts editing app.py, models.py, auth.py...
 
-### Key Benefits
+# Terminal 2 — You ask Aider to write tests
+$ aider "Write pytest unit tests for the auth module"
+# Aider starts editing test_auth.py — but also touches app.py
 
-| Problem | SwarmGit Solution |
-|---|---|
-| Agents overwrite each other | Isolated worktrees per agent |
-| Manual branch management | Automatic branch creation and cleanup |
-| Merge conflicts | Built-in merge coordinator with auto-resolve |
-| No visibility into agent progress | Real-time status dashboard with `swarm status --watch` |
-| Agent-specific setup | Plug-and-play adapters for Claude, Aider, Codex, OpenCode |
+# Result: Aider's changes to app.py overwrite Claude's changes.
+# You lose hours of work and have to start over.
+```
+
+**Workarounds people try:**
+- **Copy directories manually** — Lose git history, can't merge back easily
+- **Switch branches constantly** — Confusing, error-prone, agents hate it
+- **Run agents one at a time** — Defeats the purpose of having fast AI agents
+
+### After SwarmGit — Parallel Execution, Zero Conflicts
+
+```bash
+# One command. SwarmGit handles everything.
+$ swarm run "Build a FastAPI REST API with JWT auth and tests"
+
+# SwarmGit automatically:
+# 1. Splits the task into subtasks
+# 2. Creates isolated worktrees for each agent
+# 3. Launches agents in parallel
+# 4. Monitors progress
+# 5. Merges results when done
+```
+
+**Result:** Claude works in `.swarm/agent-1/`, Aider works in `.swarm/agent-2/`. Both commit to their own branches. SwarmGit merges them into `main` when done. **No overwrites. No lost work.**
 
 ---
 
@@ -147,37 +166,58 @@ pip install swarmgit
 ### Install from Source
 
 ```bash
-git clone https://github.com/your-username/swarmgit.git
-cd swarmgit
+git clone https://github.com/rjben/swarm-git.git
+cd swarm-git
 pip install -e ".[dev]"
 ```
 
 ### Verify Installation
 
 ```bash
-swarm --version
-swarm doctor          # checks git version + installed agents
+$ swarm --version
+swarm, version 0.1.0
+
+$ swarm doctor
+SwarmGit Doctor
+────────────────────────────────────────
+✅ Git 2.43.0 (worktree supported)
+✅ Python 3.12.3
+✅ claudecode found at /usr/local/bin/claude
+✅ opencode found at /usr/local/bin/opencode
+⚠️  codex not found (install: npm install -g @openai/codex)
+⚠️  aider not found (install: pip install aider-chat)
+────────────────────────────────────────
+2 agents ready · 1 warning · 1 missing
 ```
 
 ---
 
-## Quick Start
+## Real-World Walkthrough
 
-### 1. Initialize a SwarmGit Project
+Let's build a real project together. We'll create a Python CLI tool with auth, tests, and documentation — all in parallel using 3 agents.
+
+### Step 1: Initialize the Project
 
 ```bash
-mkdir my-api && cd my-api
-swarm init .
+$ mkdir url-shortener && cd url-shortener
+$ swarm init .
+Initialized empty Git repository in /home/user/url-shortener/.git/
+Initialized SwarmGit project at /home/user/url-shortener
+Run 'swarm task "your task"' to get started
+
+$ ls -la
+total 24
+drwxr-xr-x 4 user user 4096 May  3 10:00 .
+drwxr-xr-x 6 user user 4096 May  3 10:00 ..
+drwxr-xr-x 8 user user 4096 May  3 10:00 .git
+-rw-r--r--r-- 1 user user  655 May  3 10:00 swarm.yml
+drwxr-xr-xr-x 2 user user 4096 May  3 10:00 .swarm
+-rw-r--r--r-- 1 user user    8 May  3 10:00 .gitignore
 ```
 
-This creates:
-- `swarm.yml` — your orchestration config
-- `.swarm/` directory — where worktrees live
-- `.gitignore` entry for `.swarm/`
+### Step 2: Configure Agents
 
-### 2. Configure Your Agents
-
-Edit `swarm.yml` to set your LLM API key and preferred agents:
+Edit `swarm.yml` and set your API key:
 
 ```yaml
 splitter:
@@ -186,79 +226,407 @@ splitter:
   api_key_env: ANTHROPIC_API_KEY
 
 default_agent: claudecode
-max_agents: 4
+max_agents: 3
 ```
 
-### 3. Run a Multi-Agent Task
+### Step 3: Preview Task Splitting
 
 ```bash
-swarm run "Build a todo REST API with JWT auth and PostgreSQL"
+$ swarm task "Build a URL shortener CLI in Python with Click, SQLite storage, unit tests, and a README"
+Analyzing task...
+
+Proposed subtasks:
+  1. Create project structure, setup.py, and Click CLI skeleton with add/list/delete commands
+  2. Implement SQLite database layer and URL shortening logic with hash generation
+  3. Write pytest unit tests for database operations and CLI commands
+
+3 agents will be spawned.
+Accept? [Y/n]: y
 ```
 
-SwarmGit will:
-1. Ask Claude to split the task into subtasks
-2. Create a worktree and branch for each subtask
-3. Launch agents in parallel
-4. Show real-time progress
-5. Prompt you to merge when done
-
-### 4. Monitor Progress
+### Step 4: Run the Swarm
 
 ```bash
-# Real-time dashboard
-swarm status --watch
+$ swarm run "Build a URL shortener CLI in Python with Click, SQLite storage, unit tests, and a README"
+Task: Build a URL shortener CLI in Python with Click, SQLite storage, unit tests, and a README
+Split into 3 subtasks
 
-# Inspect an agent's work without switching branches
-swarm peek agent-2 --tree
-swarm diff agent-2
+Spawned agent-1 (claudecode) -> swarm/agent-1
+Spawned agent-2 (opencode) -> swarm/agent-2
+Spawned agent-3 (codex) -> swarm/agent-3
+
+Waiting for agents to complete...
 ```
 
-### 5. Merge Results
+### Step 5: Monitor Progress (In Another Terminal)
 
 ```bash
-# Merge all completed agents
-swarm merge
+$ swarm status --watch
 
-# Or merge automatically as agents finish
-swarm merge --auto
+SwarmGit — url-shortener
+──────────────────────────────────────────────────────────
+AGENT      TOOL          BRANCH              STATUS        LAST COMMIT
+agent-1    claudecode    swarm/agent-1       ✅ done       "setup project structure and cli skeleton"
+agent-2    opencode      swarm/agent-2       🟡 working    "implemented sqlite storage layer"
+agent-3    codex         swarm/agent-3       ⏳ waiting    —
+──────────────────────────────────────────────────────────
+1 done · 1 working · 1 waiting · 0 failed
+```
+
+### Step 6: Inspect Agent Work
+
+```bash
+# Check what agent-1 built without switching branches
+$ swarm peek agent-1 --tree
+.
+├── setup.py
+├── urlshortener/
+│   ├── __init__.py
+│   └── cli.py
+└── README.md
+
+# Read a specific file
+$ swarm peek agent-1 --file urlshortener/cli.py
+import click
+
+@click.group()
+def cli():
+    """URL Shortener CLI"""
+    pass
+
+@cli.command()
+@click.argument('url')
+def add(url):
+    """Add a URL and return a short code"""
+    pass
+
+# See the diff before merging
+$ swarm diff agent-1
+diff --git a/setup.py b/setup.py
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/setup.py
+@@ -0,0 +1,15 @@
++from setuptools import setup, find_packages
++
++setup(
++    name='urlshortener',
++    version='0.1.0',
++    packages=find_packages(),
++    install_requires=['click'],
++    entry_points={
++        'console_scripts': [
++            'urlshortener=urlshortener.cli:cli',
++        ],
++    },
++)
+```
+
+### Step 7: Merge Results
+
+```bash
+$ swarm merge
+Merging agent-1 (swarm/agent-1) → main ...  ✅ clean
+Merging agent-2 (swarm/agent-2) → main ...  ✅ clean
+Merging agent-3 (swarm/agent-3) → main ...  ✅ clean
+
+# Check the final result
+$ git log --oneline -5
+a1b2c3d Merge swarm/agent-3: Write pytest unit tests for database operations and CLI commands
+e4f5g6h Merge swarm/agent-2: Implement SQLite database layer and URL shortening logic
+i7j8k9l Merge swarm/agent-1: Create project structure, setup.py, and Click CLI skeleton
+m0n1o2p Initial commit
+
+$ ls -la
+total 40
+drwxr-xr-x 5 user user 4096 May  3 10:15 .
+drwxr-xr-x 6 user user 4096 May  3 10:00 ..
+drwxr-xr-x 8 user user 4096 May  3 10:15 .git
+-rw-r--r--r-- 1 user user  655 May  3 10:00 swarm.yml
+drwxr-xr-x 2 user user 4096 May  3 10:15 .swarm
+drwxr-xr--r-- 1 user user    8 May  3 10:00 .gitignore
+-rw-r--r--r-- 1 user user 1500 May  3 10:15 README.md
+-rw-r--r--r-- 1 user user  300 May  3 10:15 setup.py
+drwxr-xr-x 3 user user 4096 May  3 10:15 tests/
+drwxr-xr-x 3 user user 4096 May  3 10:15 urlshortener/
+```
+
+### Step 8: Clean Up
+
+```bash
+$ swarm clean
+Removed worktree: /home/user/url-shortener/.swarm/agent-1
+Deleted branch: swarm/agent-1
+Removed worktree: /home/user/url-shortener/.swarm/agent-2
+Deleted branch: swarm/agent-2
+Removed worktree: /home/user/url-shortener/.swarm/agent-3
+Deleted branch: swarm/agent-3
+Cleaned up.
+```
+
+**Done!** You now have a complete URL shortener project built by 3 agents working in parallel, with zero conflicts.
+
+---
+
+## CLI Reference with Examples
+
+### `swarm init [project-name]`
+
+Initialize a new SwarmGit project.
+
+```bash
+$ swarm init my-api
+Initialized empty Git repository in /home/user/my-api/.git/
+Initialized SwarmGit project at /home/user/my-api
+Run 'swarm task "your task"' to get started
+```
+
+**Creates:**
+- `swarm.yml` — your orchestration config
+- `.swarm/` directory — where worktrees live
+- `.gitignore` entry for `.swarm/`
+- Initializes Git if not already a repo
+
+---
+
+### `swarm task "description"`
+
+Preview how a task will be split into subtasks before spawning agents.
+
+```bash
+$ swarm task "Build a REST API with JWT auth and user CRUD"
+Analyzing task...
+
+Proposed subtasks:
+  1. Setup project structure and dependencies
+  2. Implement JWT authentication
+  3. Build user CRUD endpoints
+  4. Write unit and integration tests
+
+4 agents will be spawned.
+Accept? [Y/n]: y
 ```
 
 ---
 
-## CLI Reference
-
-### `swarm init [project-name]`
-Initialize a new SwarmGit project with config and directories.
-
-### `swarm task "description"`
-Preview how a task will be split into subtasks before spawning agents.
-
 ### `swarm run "description" [options]`
+
 All-in-one command: split, spawn, monitor, and optionally merge.
 
 ```bash
-swarm run "Build a todo REST API"
-swarm run "Refactor auth module" --agent opencode --auto-merge
-swarm run "Add tests" --coder codex --tester aider
+# Basic usage
+$ swarm run "Build a todo REST API"
+
+# Use a specific agent for all roles
+$ swarm run "Build a todo REST API" --agent claudecode
+
+# Auto-merge when agents finish
+$ swarm run "Build a todo REST API" --auto-merge
+
+# Assign different agents per role
+$ swarm run "Build a todo REST API" --coder opencode --tester codex
+
+# Limit parallel agents
+$ swarm run "Build a todo REST API" --agents 2
 ```
 
+---
+
 ### `swarm status [--watch] [--json]`
-Display real-time status of all agents in a Rich terminal table.
 
-### `swarm merge [--agent NAME] [--auto] [--dry-run]`
-Merge completed agent branches into `main` with configurable conflict handling.
+Show current state of all agents.
 
-### `swarm peek <agent> [--file PATH] [--tree] [--log]`
-Inspect an agent's branch without switching away from `main`.
+```bash
+# One-time status
+$ swarm status
+SwarmGit — my-project
+──────────────────────────────────────────────────────────
+AGENT      TOOL          BRANCH              STATUS        LAST COMMIT
+agent-1    claudecode    swarm/agent-1       ✅ done       "setup project structure"
+agent-2    opencode      swarm/agent-2       🟡 working    "added login endpoint"
+agent-3    codex         swarm/agent-3       ⏳ waiting    —
+agent-4    aider         swarm/agent-4       ⏳ waiting    —
+──────────────────────────────────────────────────────────
+1 done · 1 working · 2 waiting · 0 failed
+
+# Real-time dashboard (refreshes every 2 seconds)
+$ swarm status --watch
+
+# Machine-readable output for scripting
+$ swarm status --json
+{
+  "project": "my-project",
+  "task": "Build a REST API with auth and tests",
+  "agents": [
+    {
+      "name": "agent-1",
+      "tool": "claudecode",
+      "branch": "swarm/agent-1",
+      "status": "done",
+      "last_commit": "setup project structure"
+    }
+  ]
+}
+```
+
+**Status values:**
+- `⏳ waiting` — not yet started
+- `🟡 working` — agent process running
+- `✅ done` — agent finished, ready to merge
+- `❌ failed` — agent process exited with error
+- `🔀 merged` — branch merged into main
+
+---
+
+### `swarm merge [options]`
+
+Merge finished agent branches into main.
+
+```bash
+# Merge all DONE agents
+$ swarm merge
+Merging agent-1 (swarm/agent-1) → main ...  ✅ clean
+Merging agent-2 (swarm/agent-2) → main ...  ⚠️  conflict in src/user.js
+  → Opening conflict resolution ...
+  Press Enter when you have resolved and committed...
+
+# Merge a specific agent
+$ swarm merge --agent agent-2
+
+# Auto-merge as agents finish (keeps running)
+$ swarm merge --auto
+
+# Preview what would be merged without doing it
+$ swarm merge --dry-run
+Dry run — would merge:
+  agent-1 (swarm/agent-1)
+  agent-2 (swarm/agent-2)
+```
+
+---
+
+### `swarm peek <agent> [options]`
+
+Inspect a branch without switching to it.
+
+```bash
+# Show agent info
+$ swarm peek agent-2
+Agent: agent-2
+Tool: opencode
+Branch: swarm/agent-2
+Worktree: /home/user/my-project/.swarm/agent-2
+Status: done
+Task: Implement JWT authentication
+
+# Show file tree
+$ swarm peek agent-2 --tree
+.
+├── src/
+│   ├── auth.py
+│   └── models.py
+└── requirements.txt
+
+# Read a specific file
+$ swarm peek agent-2 --file src/auth.py
+def authenticate_user(token: str) -> dict:
+    ...
+
+# Show git log for this branch
+$ swarm peek agent-2 --log
+a1b2c3d added jwt middleware
+e4f5g6h implemented login endpoint
+```
+
+---
 
 ### `swarm diff <agent>`
-Show the diff between an agent branch and `main`.
+
+Show diff between an agent branch and main.
+
+```bash
+$ swarm diff agent-2
+diff --git a/src/auth.py b/src/auth.py
+new file mode 100644
+index 0000000..abc1234
+--- /dev/null
++++ b/src/auth.py
+@@ -0,0 +1,45 @@
++import jwt
++from datetime import datetime, timedelta
++
++def create_token(user_id: str) -> str:
++    ...
+```
+
+---
+
+### `swarm agent <subcommand>`
+
+Manual agent management.
+
+```bash
+# Create a custom agent manually
+$ swarm agent create --name "auth-agent" --branch "feature/auth" --tool claudecode
+Created agent auth-agent on branch feature/auth
+
+# Assign a task
+$ swarm agent assign "auth-agent" "implement JWT login and refresh token"
+Assigned task to auth-agent
+
+# List all agents
+$ swarm agent list
+agent-1: claudecode (done) — Setup project structure
+agent-2: opencode (working) — Implement JWT authentication
+agent-3: codex (waiting) — Build user CRUD endpoints
+
+# Stop a running agent
+$ swarm agent kill "agent-2"
+Killed agent-2 (pid 12345)
+```
+
+---
 
 ### `swarm doctor`
-Check system requirements and detect installed agents.
 
-### `swarm clean [--force] [--keep-branches]`
-Remove all worktrees and optionally delete branches.
+Check system requirements.
+
+```bash
+$ swarm doctor
+SwarmGit Doctor
+─────────────────────────────────────
+✅ Git 2.43.0 (worktree supported)
+✅ Python 3.11.4
+✅ claudecode found at /usr/local/bin/claude
+✅ opencode found at /usr/local/bin/opencode
+⚠️  codex not found (install: npm install -g @openai/codex)
+❌ aider not found (install: pip install aider-chat)
+─────────────────────────────────────
+2 agents ready · 1 warning · 1 missing
+```
+
+---
+
+### `swarm clean [options]`
+
+Remove all worktrees and agent branches.
+
+```bash
+# Clean up everything
+$ swarm clean
+Removed worktree: /home/user/my-project/.swarm/agent-1
+Deleted branch: swarm/agent-1
+Removed worktree: /home/user/my-project/.swarm/agent-2
+Deleted branch: swarm/agent-2
+Cleaned up.
+
+# Force remove even if agents are running
+$ swarm clean --force
+
+# Remove worktrees but keep branches
+$ swarm clean --keep-branches
+```
 
 ---
 
@@ -270,7 +638,7 @@ SwarmGit is configured via `swarm.yml` at your project root.
 project: my-project
 
 splitter:
-  provider: anthropic
+  provider: anthropic           # anthropic | openai | ollama
   model: claude-sonnet-4-5
   api_key_env: ANTHROPIC_API_KEY
 
@@ -399,8 +767,8 @@ See the [Contributing Guide](#contributing) for details.
 We welcome contributions from the AI developer tools community!
 
 ```bash
-git clone https://github.com/your-username/swarmgit.git
-cd swarmgit
+git clone https://github.com/rjben/swarm-git.git
+cd swarm-git
 pip install -e ".[dev]"
 
 # Run tests

@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Multi-agent Git worktree orchestrator for AI coding agents"
 readme = "README.md"
 license = { text = "MIT" }
+authors = [{ name = "Benjamina", email = "jehobenja@gmail.com" }]
 requires-python = ">=3.10"
 keywords = ["git", "ai", "agents", "worktree", "orchestration", "claude", "aider", "codex", "opencode", "multi-agent"]
 
@@ -44,6 +45,6 @@ where = ["."]
 include = ["swarmgit*"]
 
 [project.urls]
-Homepage = "https://github.com/your-username/swarmgit"
-Repository = "https://github.com/your-username/swarmgit"
-Issues = "https://github.com/your-username/swarmgit/issues"
+Homepage = "https://github.com/rjben/swarm-git"
+Repository = "https://github.com/rjben/swarm-git"
+Issues = "https://github.com/rjben/swarm-git/issues"
