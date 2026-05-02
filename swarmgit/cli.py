@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 @click.group()
-@click.version_option("0.1.0", prog_name="swarm")
+@click.version_option("0.1.1", prog_name="swarm")
 def main():
     """SwarmGit — Multi-agent Git worktree orchestrator for AI coding agents."""
     pass

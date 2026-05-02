@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI](https://img.shields.io/badge/pypi-v0.1.0-blue.svg)](https://pypi.org/project/swarmgit/)
+[![PyPI](https://img.shields.io/badge/pypi-v0.1.1-blue.svg)](https://pypi.org/project/swarmgit/)
 [![GitHub Stars](https://img.shields.io/github/stars/rjben/swarm-git?style=social)](https://github.com/rjben/swarm-git)
 
 **SwarmGit** is an open-source multi-agent orchestration CLI that solves the biggest pain point in AI-assisted software development: **AI coding agents can't work in parallel on the same codebase without overwriting each other.**

@@ -107,6 +107,23 @@ def _split_task(task: str, config, max_agents: int = 4) -> list[str]:
     api_key_env = config.splitter.get("api_key_env", "ANTHROPIC_API_KEY")
     api_key = os.environ.get(api_key_env, "")
 
+    if not api_key:
+        print(f"\n❌ API key not found!")
+        print(f"\nSwarmGit needs an API key to split tasks using {provider}.")
+        print(f"\nSet your API key as an environment variable:")
+        print(f"   export {api_key_env}=\"your-api-key-here\"")
+        print(f"\nOr on Windows Command Prompt:")
+        print(f"   set {api_key_env}=your-api-key-here")
+        print(f"\nOr on Windows PowerShell:")
+        print(f"   $env:{api_key_env}=\"your-api-key-here\"")
+        print(f"\nYou can get an API key from:")
+        if provider == "anthropic":
+            print(f"   https://console.anthropic.com/settings/keys")
+        elif provider == "openai":
+            print(f"   https://platform.openai.com/api-keys")
+        print("")
+        raise SystemExit(1)
+
     prompt = (
         f"You are a software project manager.\n"
         f"Split this development task into {max_agents} or fewer independent subtasks.\n\n"
@@ -120,24 +137,48 @@ def _split_task(task: str, config, max_agents: int = 4) -> list[str]:
         '["Setup project structure", "Implement auth system", "Write unit tests"]'
     )
 
-    if provider == "anthropic":
-        import anthropic
+    try:
+        if provider == "anthropic":
+            import anthropic
 
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=model,
-            max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = response.content[0].text.strip()
-    else:
-        raise NotImplementedError(f"Provider '{provider}' not yet supported")
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model=model,
+                max_tokens=1000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = response.content[0].text.strip()
+        else:
+            raise NotImplementedError(f"Provider '{provider}' not yet supported")
+    except anthropic.AuthenticationError:
+        print(f"\n❌ Authentication failed!")
+        print(f"Your API key for {provider} is invalid or expired.")
+        print(f"Please check your {api_key_env} environment variable.")
+        print("")
+        raise SystemExit(1)
+    except anthropic.RateLimitError:
+        print(f"\n❌ Rate limit exceeded!")
+        print(f"You've hit the rate limit for {provider}.")
+        print(f"Please wait a moment and try again.")
+        print("")
+        raise SystemExit(1)
+    except Exception as e:
+        print(f"\n❌ LLM request failed: {e}")
+        print("")
+        raise SystemExit(1)
 
     raw = raw.strip("` \n")
     if raw.startswith("json"):
         raw = raw[4:]
 
-    subtasks = json.loads(raw)
+    try:
+        subtasks = json.loads(raw)
+    except json.JSONDecodeError:
+        print(f"\n❌ Failed to parse LLM response as JSON.")
+        print(f"Raw response:\n{raw}")
+        print("")
+        raise SystemExit(1)
+
     return [s.strip() for s in subtasks if s.strip()]
 
 
