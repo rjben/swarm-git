@@ -1,0 +1,65 @@
+project: my-project
+
+# LLM used to split tasks into subtasks
+splitter:
+  provider: anthropic           # anthropic | openai | ollama
+  model: claude-sonnet-4-5
+  api_key_env: ANTHROPIC_API_KEY  # env var name, not the key itself
+
+# How many agents can run in parallel
+max_agents: 4
+
+# Where worktrees are created (relative to project root)
+worktree_dir: .swarm
+
+# Branch naming
+branch_prefix: swarm/
+
+# Merge behavior
+auto_merge: false               # merge automatically when agent is DONE
+merge_strategy: sequential      # sequential | parallel
+on_conflict: ask                # ask | auto-resolve | abort
+
+# Notification when agent finishes
+on_done: notify                 # notify | auto-merge | wait
+
+# Default agent for all roles (if no role-specific config)
+default_agent: claudecode
+
+# Assign specific agents per role
+agents:
+  architect: claudecode
+  coder: opencode
+  tester: codex
+  reviewer: aider
+
+# Per-agent settings
+agent_config:
+  claudecode:
+    model: claude-sonnet-4-5
+    extra_flags: []
+
+  opencode:
+    model: gpt-4o
+    extra_flags: []
+
+  codex:
+    model: o4-mini
+    extra_flags:
+      - --approval-mode
+      - auto-edit
+
+  aider:
+    model: gpt-4o
+    extra_flags:
+      - --yes
+      - --no-git            # IMPORTANT: swarmgit owns git, not aider
+
+# Custom agents
+custom_agents:
+  mytool:
+    command: "mytool run {task}"
+    done_signal: "Task complete."
+    workdir_flag: "--cwd"
+    env:
+      API_KEY: "{MYTOOL_API_KEY}"   # reads from env var MYTOOL_API_KEY

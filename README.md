@@ -1,0 +1,457 @@
+# SwarmGit — Multi-Agent Git Worktree Orchestrator for AI Coding Agents
+
+> Run multiple AI coding agents in parallel using native `git worktree`. Each agent gets an isolated branch and working directory. Zero conflicts, maximum velocity.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI](https://img.shields.io/badge/pypi-v0.1.0-blue.svg)](https://pypi.org/project/swarmgit/)
+[![GitHub Stars](https://img.shields.io/github/stars/your-username/swarmgit?style=social)](https://github.com/your-username/swarmgit)
+
+**SwarmGit** is an open-source multi-agent orchestration CLI that solves the biggest pain point in AI-assisted software development: **AI coding agents can't work in parallel on the same codebase without overwriting each other.**
+
+By leveraging native `git worktree`, SwarmGit gives every agent its own isolated workspace and branch. When agents finish, their changes are merged back into `main` automatically. It's like Kubernetes for AI coding agents — but for Git.
+
+---
+
+## Table of Contents
+
+- [What is SwarmGit?](#what-is-swarmgit)
+- [Why You Need SwarmGit](#why-you-need-swarmgit)
+- [Supported AI Coding Agents](#supported-ai-coding-agents)
+- [How It Works](#how-it-works)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [CLI Reference](#cli-reference)
+- [Configuration](#configuration)
+- [Architecture](#architecture)
+- [Agent Adapters](#agent-adapters)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+---
+
+## What is SwarmGit?
+
+SwarmGit is a **Git worktree orchestrator** designed specifically for the era of AI coding agents. It enables:
+
+- **Parallel agent execution** — Run Claude Code, Aider, Codex, and OpenCode simultaneously on different parts of your project
+- **Automatic branch isolation** — Each agent works in its own Git worktree linked to a dedicated branch
+- **Smart merge coordination** — Completed agent branches are merged into `main` sequentially with conflict resolution
+- **Zero directory switching** — Agents never run `git checkout`; each worktree is permanently bound to its branch
+- **LLM-powered task splitting** — Automatically decompose large tasks into parallel subtasks using Claude or OpenAI
+
+### Use Cases
+
+- **Microservice scaffolding** — Have one agent set up the API, another write auth, and a third write tests — all at the same time
+- **Refactoring at scale** — Split a monolith refactor across multiple agents working in parallel
+- **Multi-language projects** — Frontend agent builds the React app while the backend agent writes the FastAPI server
+- **Test generation** — Spawn dedicated tester agents to write unit tests while the primary agent implements features
+
+---
+
+## Why You Need SwarmGit
+
+If you've ever tried running two AI coding agents on the same repository, you've experienced this:
+
+1. Agent A modifies `app.py`
+2. Agent B modifies `app.py` at the same time
+3. Agent B overwrites Agent A's changes
+4. You lose hours of work
+
+SwarmGit eliminates this problem entirely by using **Git worktrees** — a native Git feature that creates multiple working directories backed by a single repository. Each agent sees its own filesystem, commits to its own branch, and never interferes with others.
+
+### Key Benefits
+
+| Problem | SwarmGit Solution |
+|---|---|
+| Agents overwrite each other | Isolated worktrees per agent |
+| Manual branch management | Automatic branch creation and cleanup |
+| Merge conflicts | Built-in merge coordinator with auto-resolve |
+| No visibility into agent progress | Real-time status dashboard with `swarm status --watch` |
+| Agent-specific setup | Plug-and-play adapters for Claude, Aider, Codex, OpenCode |
+
+---
+
+## Supported AI Coding Agents
+
+SwarmGit includes built-in adapters for the most popular AI coding agents. Adding a new agent requires only ~50 lines of Python.
+
+| Agent | CLI Command | Adapter Status | Git Integration |
+|---|---|---|---|
+| **Claude Code** | `claude` | ✅ Built-in | Native Git commits |
+| **OpenCode** | `opencode` | ✅ Built-in | Native Git commits |
+| **OpenAI Codex** | `codex` | ✅ Built-in | Native Git commits |
+| **Aider** | `aider` | ✅ Built-in | Managed by SwarmGit (`--no-git`) |
+| **Custom Agent** | User-defined | ✅ Configurable | Via `swarm.yml` |
+
+---
+
+## How It Works
+
+```
+User runs:
+  swarm run "Build a REST API with auth and tests"
+        │
+        ▼
+  1. Orchestrator calls LLM (Claude/OpenAI) to split task into subtasks
+        │
+        ▼
+  2. WorktreeManager creates one git worktree per subtask
+     .swarm/agent-1/  →  branch: swarm/agent-1
+     .swarm/agent-2/  →  branch: swarm/agent-2
+     .swarm/agent-3/  →  branch: swarm/agent-3
+        │
+        ▼
+  3. Each agent launches inside its worktree directory
+     claude, opencode, codex, aider — whatever is configured
+        │
+        ▼
+  4. AgentMonitor watches each agent process for completion
+        │
+        ▼
+  5. MergeCoordinator merges DONE branches into main sequentially
+        │
+        ▼
+  6. WorktreeManager cleans up worktrees
+```
+
+### Directory Layout
+
+```
+/my-project/              ← main repo, always on branch: main
+/my-project/.swarm/
+    agent-1/              ← permanently on branch: swarm/agent-1
+    agent-2/              ← permanently on branch: swarm/agent-2
+    agent-3/              ← permanently on branch: swarm/agent-3
+```
+
+**Critical principle:** Agents never run `git checkout`. Each worktree is permanently mapped to its branch via `git worktree`. Your main repo stays on `main` at all times.
+
+---
+
+## Installation
+
+### Requirements
+
+- Python 3.10 or higher
+- Git 2.30 or higher (for worktree support)
+- At least one supported AI coding agent installed
+
+### Install from PyPI
+
+```bash
+pip install swarmgit
+```
+
+### Install from Source
+
+```bash
+git clone https://github.com/your-username/swarmgit.git
+cd swarmgit
+pip install -e ".[dev]"
+```
+
+### Verify Installation
+
+```bash
+swarm --version
+swarm doctor          # checks git version + installed agents
+```
+
+---
+
+## Quick Start
+
+### 1. Initialize a SwarmGit Project
+
+```bash
+mkdir my-api && cd my-api
+swarm init .
+```
+
+This creates:
+- `swarm.yml` — your orchestration config
+- `.swarm/` directory — where worktrees live
+- `.gitignore` entry for `.swarm/`
+
+### 2. Configure Your Agents
+
+Edit `swarm.yml` to set your LLM API key and preferred agents:
+
+```yaml
+splitter:
+  provider: anthropic
+  model: claude-sonnet-4-5
+  api_key_env: ANTHROPIC_API_KEY
+
+default_agent: claudecode
+max_agents: 4
+```
+
+### 3. Run a Multi-Agent Task
+
+```bash
+swarm run "Build a todo REST API with JWT auth and PostgreSQL"
+```
+
+SwarmGit will:
+1. Ask Claude to split the task into subtasks
+2. Create a worktree and branch for each subtask
+3. Launch agents in parallel
+4. Show real-time progress
+5. Prompt you to merge when done
+
+### 4. Monitor Progress
+
+```bash
+# Real-time dashboard
+swarm status --watch
+
+# Inspect an agent's work without switching branches
+swarm peek agent-2 --tree
+swarm diff agent-2
+```
+
+### 5. Merge Results
+
+```bash
+# Merge all completed agents
+swarm merge
+
+# Or merge automatically as agents finish
+swarm merge --auto
+```
+
+---
+
+## CLI Reference
+
+### `swarm init [project-name]`
+Initialize a new SwarmGit project with config and directories.
+
+### `swarm task "description"`
+Preview how a task will be split into subtasks before spawning agents.
+
+### `swarm run "description" [options]`
+All-in-one command: split, spawn, monitor, and optionally merge.
+
+```bash
+swarm run "Build a todo REST API"
+swarm run "Refactor auth module" --agent opencode --auto-merge
+swarm run "Add tests" --coder codex --tester aider
+```
+
+### `swarm status [--watch] [--json]`
+Display real-time status of all agents in a Rich terminal table.
+
+### `swarm merge [--agent NAME] [--auto] [--dry-run]`
+Merge completed agent branches into `main` with configurable conflict handling.
+
+### `swarm peek <agent> [--file PATH] [--tree] [--log]`
+Inspect an agent's branch without switching away from `main`.
+
+### `swarm diff <agent>`
+Show the diff between an agent branch and `main`.
+
+### `swarm doctor`
+Check system requirements and detect installed agents.
+
+### `swarm clean [--force] [--keep-branches]`
+Remove all worktrees and optionally delete branches.
+
+---
+
+## Configuration
+
+SwarmGit is configured via `swarm.yml` at your project root.
+
+```yaml
+project: my-project
+
+splitter:
+  provider: anthropic
+  model: claude-sonnet-4-5
+  api_key_env: ANTHROPIC_API_KEY
+
+max_agents: 4
+worktree_dir: .swarm
+branch_prefix: swarm/
+
+auto_merge: false
+merge_strategy: sequential
+on_conflict: ask
+on_done: notify
+
+default_agent: claudecode
+
+agents:
+  architect: claudecode
+  coder: opencode
+  tester: codex
+  reviewer: aider
+
+agent_config:
+  claudecode:
+    model: claude-sonnet-4-5
+    extra_flags: []
+  aider:
+    model: gpt-4o
+    extra_flags:
+      - --yes
+      - --no-git
+
+custom_agents:
+  mytool:
+    command: "mytool run {task}"
+    done_signal: "Task complete."
+    workdir_flag: "--cwd"
+    env:
+      API_KEY: "{MYTOOL_API_KEY}"
+```
+
+See [`swarm.yml.example`](swarm.yml.example) for the full reference.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        CLI Layer                        │
+│   swarm init / run / status / merge / peek / agent      │
+└───────────────────────┬─────────────────────────────────┘
+                        │
+┌───────────────────────▼─────────────────────────────────┐
+│                    Orchestrator                         │
+│   - Receives task string                                │
+│   - Calls LLM to split into subtasks                    │
+│   - Coordinates all modules below                       │
+└──┬──────────────┬──────────────┬────────────────────────┘
+   │              │              │
+   ▼              ▼              ▼
+┌──────────┐ ┌─────────┐ ┌──────────────┐
+│ Worktree │ │  Agent  │ │    Merge     │
+│ Manager  │ │ Monitor │ │ Coordinator  │
+│          │ │         │ │              │
+│ add      │ │ spawn   │ │ queue        │
+│ remove   │ │ watch   │ │ merge        │
+│ list     │ │ signal  │ │ conflict     │
+└────┬─────┘ └────┬────┘ └──────┬───────┘
+     │            │             │
+     ▼            ▼             │
+┌─────────────────────┐         │
+│   Adapter Layer     │         │
+│                     │         │
+│  ClaudeCodeAdapter  │         │
+│  OpenCodeAdapter    │         │
+│  CodexAdapter       │         │
+│  AiderAdapter       │         │
+│  CustomAdapter      │         │
+└─────────────────────┘         │
+                                │
+┌───────────────────────────────▼─┐
+│         Git Layer               │
+│   git worktree add/remove/list  │
+│   git merge / git log           │
+│   git status / git diff         │
+└─────────────────────────────────┘
+```
+
+### Core Modules
+
+| Module | Responsibility |
+|---|---|
+| `swarmgit/cli.py` | Click CLI entry point and argument parsing |
+| `swarmgit/orchestrator.py` | Main coordination logic, state persistence |
+| `swarmgit/config.py` | `swarm.yml` loader and validation |
+| `swarmgit/models.py` | Data classes: `AgentRun`, `Worktree`, `SwarmTask` |
+| `swarmgit/git/worktree.py` | Native `git worktree` subprocess wrappers |
+| `swarmgit/git/merge.py` | Merge coordinator with conflict strategies |
+| `swarmgit/monitor/agent_monitor.py` | Threaded agent process launcher and watcher |
+| `swarmgit/adapters/` | Agent-specific command builders and done-detection |
+| `swarmgit/ui/status.py` | Rich terminal dashboard |
+
+---
+
+## Agent Adapters
+
+SwarmGit uses an adapter pattern to support any AI coding agent. Each adapter implements:
+
+- `build_command()` — Construct the agent's CLI invocation
+- `is_done()` — Detect when the agent has finished its task
+- `pre_run()` / `post_run()` — Lifecycle hooks for setup and cleanup
+
+### Adding a New Agent Adapter
+
+1. Create `swarmgit/adapters/youragent.py`
+2. Extend `BaseAdapter`
+3. Implement `build_command()` and `is_done()`
+4. Register in `swarmgit/adapters/__init__.py`
+5. Add tests in `tests/test_adapters.py`
+
+See the [Contributing Guide](#contributing) for details.
+
+---
+
+## Contributing
+
+We welcome contributions from the AI developer tools community!
+
+```bash
+git clone https://github.com/your-username/swarmgit.git
+cd swarmgit
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Format and lint
+black swarmgit/
+ruff check swarmgit/
+
+# Type check
+mypy swarmgit/
+```
+
+### Good First Issues
+
+- [ ] Add Ollama support for local LLM task splitting
+- [ ] Add `--follow` support to `swarm agent logs`
+- [ ] Build a Docker adapter for containerized agents
+- [ ] Add `swarm report` to aggregate agent failures
+- [ ] Implement parallel merge strategy (advanced)
+
+---
+
+## Roadmap
+
+| Version | Features |
+|---|---|
+| **v0.1.0** (MVP) | Core worktree orchestration, 4 built-in adapters, sequential merge |
+| **v0.2.0** | LLM task splitting, `swarm task` preview, custom agents |
+| **v0.3.0** | `swarm peek`, `swarm diff`, enhanced conflict resolution |
+| **v0.4.0** | Parallel merge strategy, agent logs, failure reporting |
+| **v1.0.0** | Stable API, plugin ecosystem, CI/CD integrations |
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE)
+
+```
+Copyright (c) 2025 SwarmGit Contributors
+```
+
+---
+
+## Keywords
+
+AI coding agents, multi-agent orchestration, git worktree, parallel coding, Claude Code, Aider, Codex, OpenCode, developer tools, CLI, Python, open source, Git workflow, AI-assisted development, agent swarm, branch management, merge automation, software development automation
+
+---
+
+<p align="center">
+  Built with ❤️ for the AI coding community
+</p>

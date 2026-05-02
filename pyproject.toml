@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swarmgit"
+version = "0.1.0"
+description = "Multi-agent Git worktree orchestrator for AI coding agents"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["git", "ai", "agents", "worktree", "orchestration", "claude", "aider", "codex", "opencode", "multi-agent"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "click>=8.1",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+    "anthropic>=0.25",
+    "openai>=1.0",
+    "gitpython>=3.1",
+    "psutil>=5.9",
+]
+
+[project.scripts]
+swarm = "swarmgit.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "black", "ruff", "mypy"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["swarmgit*"]
+
+[project.urls]
+Homepage = "https://github.com/your-username/swarmgit"
+Repository = "https://github.com/your-username/swarmgit"
+Issues = "https://github.com/your-username/swarmgit/issues"
